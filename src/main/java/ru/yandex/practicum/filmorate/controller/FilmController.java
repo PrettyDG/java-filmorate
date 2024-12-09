@@ -74,6 +74,10 @@ public class FilmController {
                 oldFilm.setDescription(newFilm.getDescription());
                 log.info("Описание фильма обновлено - " + oldFilm.getDescription());
             }
+            if (newFilm.getReleaseDate() != null) {
+                oldFilm.setReleaseDate(newFilm.getReleaseDate());
+                log.info("Дата выхода фильма обновлена - " + oldFilm.getReleaseDate());
+            }
 
             log.info("Фильм с id - " + oldFilm.getId() + " успешно обновлён");
             return oldFilm;
