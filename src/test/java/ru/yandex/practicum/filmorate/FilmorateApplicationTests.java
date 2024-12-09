@@ -10,7 +10,6 @@ import ru.yandex.practicum.filmorate.controller.UserController;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
 
-import java.time.Duration;
 import java.time.LocalDate;
 
 
@@ -26,7 +25,7 @@ class FilmorateApplicationTests {
 
     @Test
     void createFilm() {
-        Film film = new Film(1L, "Film name", "Description1", LocalDate.now(), Duration.ofMinutes(4));
+        Film film = new Film(1L, "Film name", "Description1", LocalDate.now(), 120L);
 
         Assertions.assertNotNull(filmController.create(film));
     }
@@ -44,7 +43,7 @@ class FilmorateApplicationTests {
                 .name("Film name")
                 .description("Description1")
                 .releaseDate(LocalDate.now())
-                .duration(Duration.ofMinutes(5))
+                .duration(300L)
                 .build();
 
         filmController.create(film);
@@ -54,7 +53,7 @@ class FilmorateApplicationTests {
                 .name("New Film name")
                 .description("New Description2")
                 .releaseDate(LocalDate.now().minusYears(2))
-                .duration(Duration.ofMinutes(15))
+                .duration(60L)
                 .build();
 
         Assertions.assertNotNull(filmController.update(film2));
