@@ -1,11 +1,11 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 
-import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,19 +23,8 @@ public class UserController {
     }
 
     @PostMapping
-    public User create(@RequestBody User user) {
+    public User create(@Valid @RequestBody User user) {
         log.info("Получен запрос на создание пользователя: " + user);
-
-        if (user.getEmail() == null || !user.getEmail().contains("@")) {
-            log.error("Ошибка создания пользователя: электронная почта пуста или не содержит @");
-            throw new ValidationException("Электронная почта не может быть пустой и должна содержать символ @");
-        } else if (user.getLogin() == null || user.getLogin().contains(" ")) {
-            log.error("Ошибка создания пользователя: логин пустой или содержит пробелы");
-            throw new ValidationException("Логин не может быть пустым и содержать пробелы");
-        } else if (user.getBirthday().isAfter(LocalDate.now())) {
-            log.error("Ошибка создания пользователя: дата рождения в будущем");
-            throw new ValidationException("Дата рождения не может быть в будущем");
-        }
 
         if (user.getName() == null) {
             user.setName(user.getLogin());
@@ -49,7 +38,7 @@ public class UserController {
     }
 
     @PutMapping
-    public User update(@RequestBody User newUser) {
+    public User update(@Valid @RequestBody User newUser) {
         log.info("Получен запрос на обновление пользователя: " + newUser);
 
         if (newUser.getId() == null) {

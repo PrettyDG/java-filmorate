@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exceptions.ValidationException;
@@ -23,21 +24,12 @@ public class FilmController {
     }
 
     @PostMapping
-    public Film create(@RequestBody Film film) {
+    public Film create(@Valid @RequestBody Film film) {
         log.info("Получен запрос на создание фильма: " + film);
 
-        if (film.getName() == null || film.getName().isBlank()) {
-            log.error("Ошибка создания фильма: название не может быть пустым");
-            throw new ValidationException("Название не может быть пустым");
-        } else if (film.getDescription().length() > 200) {
-            log.error("Ошибка создания фильма: максимальная длина - 200 символов");
-            throw new ValidationException("Максимальная длина описания — 200 символов");
-        } else if (film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
+        if (film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
             log.error("Ошибка создания фильма: дата релиза раньше 28.12.1895");
             throw new ValidationException("Дата релиза — не раньше 28 декабря 1895 года");
-        } else if (film.getDuration() < 0) {
-            log.error("Ошибка создания фильма: продолжительность фильма отрицательная");
-            throw new ValidationException("Продолжительность фильма должна быть положительным числом");
         }
 
         film.setId(getNextId());
@@ -48,7 +40,7 @@ public class FilmController {
     }
 
     @PutMapping
-    public Film update(@RequestBody Film newFilm) {
+    public Film update(@Valid @RequestBody Film newFilm) {
         log.info("Получен запрос на обновление фильма: " + newFilm);
 
         if (newFilm.getId() == null) {
