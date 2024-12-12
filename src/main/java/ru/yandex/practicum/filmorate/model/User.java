@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NonNull;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 @Data
 @AllArgsConstructor
@@ -24,4 +25,5 @@ public class User {
     @NonNull
     @Past
     private LocalDate birthday;
+    private Set<Long> friends;
 }
