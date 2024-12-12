@@ -20,8 +20,8 @@ public class UserController {
     private final UserService userService;
 
     @Autowired
-    public UserController(UserStorage UserStorage, UserService userService) {
-        this.userStorage = UserStorage;
+    public UserController(UserStorage userStorage, UserService userService) {
+        this.userStorage = userStorage;
         this.userService = userService;
     }
 
