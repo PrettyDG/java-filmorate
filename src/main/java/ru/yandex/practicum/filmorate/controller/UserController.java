@@ -8,7 +8,7 @@ import ru.yandex.practicum.filmorate.exceptions.NotFoundException;
 import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
-import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.Collection;
 
@@ -16,25 +16,25 @@ import java.util.Collection;
 @RequestMapping("/users")
 @Slf4j
 public class UserController {
-    private final InMemoryUserStorage inMemoryUserStorage;
+    private final UserStorage userStorage;
     private final UserService userService;
 
     @Autowired
-    public UserController(InMemoryUserStorage inMemoryUserStorage, UserService userService) {
-        this.inMemoryUserStorage = inMemoryUserStorage;
+    public UserController(UserStorage UserStorage, UserService userService) {
+        this.userStorage = UserStorage;
         this.userService = userService;
     }
 
     @GetMapping("/{userId}")
     public User getUserById(@PathVariable Long userId) {
         log.info("Получен запрос на получение пользователя с id - " + userId);
-        return inMemoryUserStorage.getUserById(userId);
+        return userStorage.getUserById(userId);
     }
 
     @GetMapping
     public Collection<User> getAll() {
         log.info("Получен запрос на получение всех пользователей");
-        return inMemoryUserStorage.getAllUsers();
+        return userStorage.getAllUsers();
     }
 
     @GetMapping("/{userId}/friends")
@@ -53,7 +53,7 @@ public class UserController {
     public User create(@Valid @RequestBody User user) {
         log.info("Получен запрос на создание пользователя: " + user);
 
-        inMemoryUserStorage.createUser(user);
+        userStorage.createUser(user);
         return user;
     }
 
@@ -65,10 +65,10 @@ public class UserController {
             log.error("Ошибка обновления пользователя: ID не указан");
             throw new ValidationException("Id должен быть указан");
         }
-        if (inMemoryUserStorage.isUserAlreadyCreatedById(newUser.getId())) {
-            User oldUser = inMemoryUserStorage.getUserById(newUser.getId());
+        if (userStorage.isUserAlreadyCreatedById(newUser.getId())) {
+            User oldUser = userStorage.getUserById(newUser.getId());
 
-            if (inMemoryUserStorage.isUserEmailAlreadyExist(newUser.getEmail())) {
+            if (userStorage.isUserEmailAlreadyExist(newUser.getEmail())) {
                 log.error("Ошибка обновления пользователя: email уже используется");
                 throw new ValidationException("Этот имейл уже используется");
             }
@@ -87,7 +87,7 @@ public class UserController {
                 log.info("Имя пользователя успешно обновлено - " + oldUser.getName());
             }
 
-            inMemoryUserStorage.updateUser(oldUser.getId(), oldUser);
+            userStorage.updateUser(oldUser.getId(), oldUser);
             log.info("Пользователь с id - " + oldUser.getId() + " успешно обновлён");
 
             return oldUser;
@@ -100,13 +100,13 @@ public class UserController {
     public User addFriend(@PathVariable Long userId, @PathVariable Long friendId) {
         log.info("Получен запрос на добавление в друзья от: " + userId + ", к: " + friendId);
         userService.addFriend(userId, friendId);
-        return inMemoryUserStorage.getUserById(friendId);
+        return userStorage.getUserById(friendId);
     }
 
     @DeleteMapping("/{userId}/friends/{friendId}")
     public User deleteFriend(@PathVariable Long userId, @PathVariable Long friendId) {
         log.info("Получен запрос на удаление из друзей от: " + userId + ", к: " + friendId);
         userService.deleteFriend(userId, friendId);
-        return inMemoryUserStorage.getUserById(friendId);
+        return userStorage.getUserById(friendId);
     }
 }
