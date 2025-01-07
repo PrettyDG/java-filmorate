@@ -2,14 +2,17 @@ package ru.yandex.practicum.filmorate.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exceptions.NotFoundException;
+import ru.yandex.practicum.filmorate.model.Friends;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
+import ru.yandex.practicum.filmorate.storage.user.dal.FriendsDbStorage;
+import ru.yandex.practicum.filmorate.storage.user.dal.FriendshipStatusDbStorage;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -17,10 +20,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public class UserService {
     private final UserStorage userStorage;
+    private final FriendsDbStorage friendsDbStorage;
 
     @Autowired
-    public UserService(UserStorage userStorage) {
+    public UserService(@Qualifier("userDbStorage") UserStorage userStorage, FriendsDbStorage friendsDbStorage, FriendshipStatusDbStorage friendshipStatusDbStorage) {
         this.userStorage = userStorage;
+        this.friendsDbStorage = friendsDbStorage;
     }
 
     public void addFriend(Long userId, Long friendId) {
@@ -31,23 +36,33 @@ public class UserService {
             log.error("Не найден пользователь с id - " + friendId);
             throw new NotFoundException("Не найден пользователь с id - " + friendId);
         }
-        if (userStorage.getUserById(userId).getFriends() == null) {
-            Set<Long> friends = new HashSet<>();
-            friends.add(friendId);
-            userStorage.getUserById(userId).setFriends(friends);
-        } else {
-            userStorage.getUserById(userId).getFriends().add(friendId);
-        }
 
-        if (userStorage.getUserById(friendId).getFriends() == null) {
-            Set<Long> friends = new HashSet<>();
-            friends.add(userId);
-            userStorage.getUserById(friendId).setFriends(friends);
+        if (!friendsDbStorage.allFriendsToUser(userId).isEmpty()) {
+            if (friendsDbStorage.allFriendsToUser(userId).contains(friendId)) {
+                Friends friend = friendsDbStorage.allFriendsToUser(userId).stream()
+                        .filter(f -> f.getFriendId().equals(friendId))
+                        .findFirst()
+                        .orElse(null);
+                if (friend.getStatusId() == 1) {
+                    friendsDbStorage.acceptFriendStatus(userId, friendId);
+                    log.info("ОДОБРЕН запрос в друзья от id {} к id {}", userId, friendId);
+                }
+            }
+        } else if (!friendsDbStorage.allFriendsToUser(friendId).isEmpty()) {
+            if (friendsDbStorage.allFriendsToUser(friendId).contains(userId)) {
+                Friends friend = friendsDbStorage.allFriendsToUser(friendId).stream()
+                        .filter(f -> f.getFriendId().equals(userId))
+                        .findFirst()
+                        .orElse(null);
+                if (friend.getStatusId() == 1) {
+                    friendsDbStorage.acceptFriendStatus(userId, friendId);
+                    log.info("ОДОБРЕН запрос в друзья от id {} к id {}", userId, friendId);
+                }
+            }
         } else {
-            userStorage.getUserById(friendId).getFriends().add(userId);
+            log.info("ПОЛУЧЕН запрос в друзья от id {} к id {}", userId, friendId);
+            friendsDbStorage.addNewFriends(userId, friendId);
         }
-
-        log.info("Пользователи {} и {} теперь друзья", userId, friendId);
     }
 
     public void deleteFriend(Long userId, Long friendId) {
@@ -57,15 +72,18 @@ public class UserService {
         } else if (!userStorage.isUserAlreadyCreatedById(friendId)) {
             log.error("Не существует пользователя с id - " + userId);
             throw new NotFoundException("Не найден пользователь с id - " + friendId);
-        } else if (userStorage.getUserById(userId).getFriends() == null
-                || userStorage.getUserById(friendId).getFriends() == null) {
+        } else if (friendsDbStorage.allFriendsToUser(userId) == null &&
+                friendsDbStorage.allFriendsToUser(friendId) == null) {
             log.info("У пользователя нет друзей");
             return;
         }
 
-        userStorage.getUserById(userId).getFriends().remove(friendId);
 
-        userStorage.getUserById(friendId).getFriends().remove(userId);
+        if (friendsDbStorage.getFriendById(userId, friendId) != null && friendsDbStorage.getFriendById(userId, friendId).getStatusId() == 2) {
+            friendsDbStorage.updateFriend(friendId, userId);
+        }
+
+        friendsDbStorage.deleteFriend(userId, friendId);
 
         log.info("Пользователи {} и {} теперь не в друзьях", userId, friendId);
     }
@@ -74,9 +92,13 @@ public class UserService {
         if (userStorage.getUserById(userId) == null) {
             log.error("Не существует пользователя с id - " + userId);
             throw new NotFoundException("Не существует пользователя с id - " + userId);
+        } else if (friendsDbStorage.allFriendsToUser(userId) == null) {
+            log.error("У пользователя пока нет друзей");
+            throw new NotFoundException("Не существует друзей у пользователя с id " + userId);
         }
+
         log.info("Выдаётся список всех id друзей для пользователя - " + userId);
-        return userStorage.getUserById(userId).getFriends();
+        return friendsDbStorage.allFriendsToUser(userId).stream().map(Friends::getFriendId).collect(Collectors.toSet());
     }
 
     public Collection<User> getAllFriends(Long userId) {
