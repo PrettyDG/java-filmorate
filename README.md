@@ -1,7 +1,8 @@
 # java-filmorate
 Template repository for Filmorate project.
 
-![2024-12-14_13-51-45](https://github.com/user-attachments/assets/7a0fdcef-7d41-45f5-a435-ffbacb959a15)
+![photo_2025-01-06_20-53-18](https://github.com/user-attachments/assets/871f6ce8-3e5f-4dde-a350-533e5cef97d9)
+
 
 # Примеры запросов
 Получение всех фильмов:  
