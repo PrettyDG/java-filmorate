@@ -73,11 +73,7 @@ public class FilmController {
                     .map(Genre::getId)
                     .collect(Collectors.toSet());
 
-            for (Long genreID : uniqueGenreIds) {
-                if (!existingGenreIds.contains(genreID)) {
-                    filmGenresDbStorage.addGenreToFilm(film.getId(), genreID);
-                }
-            }
+            filmGenresDbStorage.addGenreToFilm(film.getId(), uniqueGenreIds);
         }
 
         log.info("Фильм успешно создан с id: " + film.getId());

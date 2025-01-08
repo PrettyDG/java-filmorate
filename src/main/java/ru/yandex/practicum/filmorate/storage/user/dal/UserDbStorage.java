@@ -18,15 +18,11 @@ import java.util.Map;
 public class UserDbStorage implements UserStorage {
 
     private final JdbcTemplate jdbcTemplate;
-    private final FriendsDbStorage friendsDbStorage;
-    private final FriendshipStatusDbStorage friendshipStatusDbStorage;
     private final Map<Long, User> users = new HashMap<>();
 
     @Autowired
-    public UserDbStorage(JdbcTemplate jdbcTemplate, FriendsDbStorage friendsDbStorage, FriendshipStatusDbStorage friendshipStatusDbStorage) {
+    public UserDbStorage(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        this.friendsDbStorage = friendsDbStorage;
-        this.friendshipStatusDbStorage = friendshipStatusDbStorage;
     }
 
     @Override

@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
+import ru.yandex.practicum.filmorate.exceptions.ValidationConstants;
 import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 
 import java.time.LocalDate;
@@ -34,13 +35,13 @@ public class Film {
 
     @AssertTrue
     public boolean isMpaIdValid() {
-        return mpa == null || mpa.getId() <= 6;
+        return mpa == null || mpa.getId() <= ValidationConstants.MAX_MPA_ID;
     }
 
     @AssertTrue
     public boolean isGenreIdValid() {
         if (genres != null) {
-            if (genres.stream().allMatch(g -> g.getId() >= 19) && !genres.isEmpty()) {
+            if (genres.stream().allMatch(g -> g.getId() >= ValidationConstants.MAX_VALID_GENRE_ID) && !genres.isEmpty()) {
                 throw new ValidationException("Жанр неправильный");
             }
         }

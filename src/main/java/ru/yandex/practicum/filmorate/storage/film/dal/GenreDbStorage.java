@@ -32,4 +32,9 @@ public class GenreDbStorage {
         return jdbcTemplate.query(sql, new GenreMapper(), id).stream().findFirst();
     }
 
+    public Optional<Genre> getGenresByIDsSet(Long id) {
+        String sql = "SELECT * FROM GENRE WHERE genre_id = ?";
+        log.info("Получен запрос на получение жанра с id - " + id);
+        return jdbcTemplate.query(sql, new GenreMapper(), id).stream().findFirst();
+    }
 }

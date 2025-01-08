@@ -12,6 +12,7 @@ import ru.yandex.practicum.filmorate.storage.film.dal.MpaDbStorage;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class FilmMapper implements RowMapper<Film> {
@@ -54,15 +55,20 @@ public class FilmMapper implements RowMapper<Film> {
         if (filmGenresDbStorage.findAllGenresByFilmId(film.getId()) != null) {
             List<FilmGenre> genreIdsForFilm = filmGenresDbStorage.findAllGenresByFilmId(film.getId());
             LinkedHashSet<Genre> genresForFilm = new LinkedHashSet<>();
+            List<Genre> allGenres = genreDbStorage.getAllGenres();
+            Map<Long, String> genreMap = allGenres.stream()
+                    .collect(Collectors.toMap(Genre::getId, Genre::getName));
+
             for (FilmGenre filmGenre : genreIdsForFilm) {
                 Genre currentGenre = new Genre();
                 Long genreId = filmGenre.getGenreId();
 
                 currentGenre.setId(genreId);
-                currentGenre.setName(genreDbStorage.getGenreById(genreId).get().getName());
+                currentGenre.setName(genreMap.get(genreId));
 
                 genresForFilm.add(currentGenre);
             }
+
             film.setGenres(genresForFilm);
         }
 

@@ -8,6 +8,7 @@ import ru.yandex.practicum.filmorate.model.FilmGenre;
 import ru.yandex.practicum.filmorate.storage.film.mappers.FilmGenresMapper;
 
 import java.util.List;
+import java.util.Set;
 
 @Repository("filmGenresDbStorage")
 @Slf4j
@@ -26,9 +27,17 @@ public class FilmGenresDbStorage {
         return filmGenres;
     }
 
-    public void addGenreToFilm(Long filmId, Long genreId) {
+    public void addGenreToFilm(Long filmId, Set<Long> genreIds) {
         String sql = "INSERT INTO FILM_GENRE (film_id, genre_id) VALUES (?, ?)";
-        log.info("Получен запрос на добавление жанра к фильму - " + filmId + ", жанр - " + genreId);
-        jdbcTemplate.update(sql, filmId, genreId);
+
+        if (genreIds != null && !genreIds.isEmpty()) {
+            log.info("Получен запрос на добавление жанра к фильму - " + filmId + ", жанр - " + genreIds);
+
+            List<Object[]> batchArgs = genreIds.stream()
+                    .map(genreId -> new Object[]{filmId, genreId})
+                    .toList();
+
+            jdbcTemplate.batchUpdate(sql, batchArgs);
+        }
     }
 }
