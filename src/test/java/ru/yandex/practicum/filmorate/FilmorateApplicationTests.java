@@ -1,149 +1,235 @@
 package ru.yandex.practicum.filmorate;
 
-import org.junit.jupiter.api.Assertions;
+import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.controller.UserController;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.service.FilmService;
-import ru.yandex.practicum.filmorate.service.UserService;
-import ru.yandex.practicum.filmorate.storage.film.InMemoryFilmStorage;
-import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.film.dal.FilmDbStorage;
+import ru.yandex.practicum.filmorate.storage.user.dal.UserDbStorage;
 
 import java.time.LocalDate;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 
 @SpringBootTest
+@AutoConfigureTestDatabase
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
+@Import({UserDbStorage.class})
 class FilmorateApplicationTests {
-    InMemoryFilmStorage inMemoryFilmStorage = new InMemoryFilmStorage();
-    InMemoryUserStorage inMemoryUserStorage = new InMemoryUserStorage();
-    UserService userService = new UserService(inMemoryUserStorage);
-    UserController userController = new UserController(inMemoryUserStorage, userService);
-    FilmService filmService = new FilmService(inMemoryFilmStorage, inMemoryUserStorage);
-    FilmController filmController = new FilmController(inMemoryFilmStorage, filmService);
+    private final UserDbStorage userStorage;
+    private final UserController userController;
+    private final FilmController filmController;
+    private final FilmDbStorage filmDbStorage;
 
     @BeforeAll
     static void startUp() {
         SpringApplication.run(FilmorateApplication.class);
     }
 
-    @BeforeEach
-    void beforeEach() {
-        User user = User.builder()
-                .id(1L)
+    @Test
+    public void testFindUserById() {
+        User user1 = User.builder()
+                .id(Long.parseLong("1"))
                 .login("Login")
                 .name("Name")
                 .email("email@email.ru")
                 .birthday(LocalDate.now().minusYears(20))
                 .build();
-        userController.create(user);
+        userController.create(user1);
 
-        Film film = Film.builder()
-                .id(1L)
+        Film film1 = Film.builder()
+                .id(Long.parseLong("1"))
                 .name("Film name")
                 .description("Description1")
                 .releaseDate(LocalDate.now())
                 .duration(300L)
+                .mpa(new Mpa())
                 .build();
-        filmController.create(film);
+        filmController.create(film1);
+
+        Optional<User> userOptional = Optional.ofNullable(userStorage.getUserById(Long.parseLong("1")));
+
+        assertThat(userOptional)
+                .isPresent()
+                .hasValueSatisfying(user ->
+                        assertThat(user).hasFieldOrPropertyWithValue("id", 1L)
+                );
     }
 
     @Test
-    void getFilms() {
-        System.out.println(filmController.getAll());
-        Assertions.assertNotNull(filmController.getAll());
-    }
-
-    @Test
-    void updateFilm() {
-        Film film2 = Film.builder()
-                .id(1L)
-                .name("New Film name")
-                .description("New Description2")
-                .releaseDate(LocalDate.now().minusYears(2))
-                .duration(60L)
+    public void testIsFilmNameAlreadyExist() {
+        Film film = Film.builder()
+                .name("Unique Name")
+                .description("Some Description")
+                .releaseDate(LocalDate.of(2023, 6, 6))
+                .duration(125L)
+                .mpa(new Mpa())
                 .build();
 
-        Assertions.assertNotNull(filmController.update(film2));
+        filmDbStorage.createFilm(film);
+
+        boolean exists = filmDbStorage.isFilmNameAlreadyExist("Unique Name");
+
+        assertThat(exists).isTrue();
     }
 
     @Test
-    void createUser() {
+    public void testIsFilmAlreadyCreatedById() {
+        Film film = Film.builder()
+                .name("Film for ID Check")
+                .description("Description for ID Check")
+                .releaseDate(LocalDate.of(2023, 5, 5))
+                .duration(115L)
+                .mpa(new Mpa())
+                .build();
+
+        filmDbStorage.createFilm(film);
+
+        boolean exists = filmDbStorage.isFilmAlreadyCreatedById(film.getId());
+
+        assertThat(exists).isTrue();
+    }
+
+    @Test
+    public void testUpdateFilm() {
+        Film film = Film.builder()
+                .name("Original Film")
+                .description("Original Description")
+                .releaseDate(LocalDate.of(2022, 4, 14))
+                .duration(90L)
+                .mpa(new Mpa())
+                .build();
+
+        filmDbStorage.createFilm(film);
+
+        film.setName("Updated Film");
+        film.setDescription("Updated Description");
+
+        filmDbStorage.updateFilm(film);
+
+        Film updatedFilm = filmDbStorage.getFilmById(film.getId());
+
+        assertThat(updatedFilm).isNotNull();
+        assertThat(updatedFilm).hasFieldOrPropertyWithValue("name", "Updated Film");
+        assertThat(updatedFilm).hasFieldOrPropertyWithValue("description", "Updated Description");
+    }
+
+    @Test
+    public void testGetFilmById() {
+        Film film = Film.builder()
+                .name("Test Film 2")
+                .description("Test Description 2")
+                .releaseDate(LocalDate.of(2021, 5, 10))
+                .duration(100L)
+                .mpa(new Mpa())
+                .build();
+
+        filmDbStorage.createFilm(film);
+
+        Film retrievedFilm = filmDbStorage.getFilmById(film.getId());
+
+        assertThat(retrievedFilm).isNotNull();
+        assertThat(retrievedFilm).hasFieldOrPropertyWithValue("name", "Test Film 2");
+    }
+
+    @Test
+    void testCreateUser() {
         User user = User.builder()
-                .id(2L)
-                .login("Login1")
-                .name("Name1")
-                .email("email@email.ru")
-                .birthday(LocalDate.now().minusYears(20))
+                .email("user1@example.com")
+                .login("user1")
+                .name("User One")
+                .birthday(LocalDate.of(1990, 1, 1))
                 .build();
 
-        userController.create(user);
-        Assertions.assertNotNull(userController.create(user));
+        userStorage.createUser(user);
+        Optional<User> retrievedUser = Optional.ofNullable(userStorage.getUserById(user.getId()));
+
+        assertThat(retrievedUser)
+                .isPresent()
+                .hasValueSatisfying(u -> assertThat(u.getEmail()).isEqualTo("user1@example.com"));
     }
 
     @Test
-    void getUsers() {
-        System.out.println(userController.getAll());
-        Assertions.assertNotNull(userController.getAll());
-    }
-
-    @Test
-    void updateUser() {
-        User user2 = User.builder()
-                .id(1L)
-                .login("New Login")
-                .name("New Name")
-                .email("new2email@email.ru")
-                .birthday(LocalDate.now().minusYears(22))
-                .build();
-
-        Assertions.assertNotNull(userController.update(user2));
-    }
-
-    @Test
-    void getAllUsers() {
-        Assertions.assertNotNull(userController.getAll());
-    }
-
-    @Test
-    void getAllFilms() {
-        Assertions.assertNotNull(filmController.getAll());
-    }
-
-    @Test
-    void getUserAndFriends() {
+    void testGetUserById() {
         User user = User.builder()
-                .id(1L)
-                .login("Login")
-                .name("Name")
-                .email("email@email.ru")
-                .birthday(LocalDate.now().minusYears(20))
+                .email("user2@example.com")
+                .login("user2")
+                .name("User Two")
+                .birthday(LocalDate.of(1992, 2, 2))
                 .build();
-        userController.create(user);
 
-        User user2 = User.builder()
-                .id(2L)
-                .login("New Login")
-                .name("New Name")
-                .email("new2email@email.ru")
-                .birthday(LocalDate.now().minusYears(22))
-                .build();
-        userController.create(user2);
+        userStorage.createUser(user);
+        User retrievedUser = userStorage.getUserById(user.getId());
 
-        userController.getUserById(1L);
-        userController.addFriend(1L, 2L);
-
-        userController.getUserFriends(1L);
+        assertThat(retrievedUser).isNotNull();
+        assertThat(retrievedUser.getEmail()).isEqualTo("user2@example.com");
     }
 
     @Test
-    void likeAndDelikeFilm() {
-        filmController.likeFilm(1L, 1L);
-        filmController.deleteLike(1L, 1L);
+    void testIsUserAlreadyCreatedById() {
+        User user = User.builder()
+                .email("user5@example.com")
+                .login("user5")
+                .name("User Five")
+                .birthday(LocalDate.of(1995, 5, 5))
+                .build();
+
+        userStorage.createUser(user);
+        boolean exists = userStorage.isUserAlreadyCreatedById(user.getId());
+
+        assertThat(exists).isTrue();
+    }
+
+    @Test
+    void testIsUserEmailAlreadyExist() {
+        User user = User.builder()
+                .email("user6@example.com")
+                .login("user6")
+                .name("User Six")
+                .birthday(LocalDate.of(1996, 6, 6))
+                .build();
+
+        userStorage.createUser(user);
+        boolean exists = userStorage.isUserEmailAlreadyExist("user6@example.com");
+
+        assertThat(exists).isTrue();
+    }
+
+    @Test
+    void testUpdateUser() {
+        User user = User.builder()
+                .email("user7@example.com")
+                .login("user7")
+                .name("User Seven")
+                .birthday(LocalDate.of(1997, 7, 7))
+                .build();
+
+        userStorage.createUser(user);
+
+        User updatedUser = User.builder()
+                .email("updated@example.com")
+                .login("updatedUser")
+                .name("Updated User")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .build();
+
+        userStorage.updateUser(user.getId(), updatedUser);
+
+        User retrievedUser = userStorage.getUserById(user.getId());
+
+        assertThat(retrievedUser).isNotNull();
+        assertThat(retrievedUser.getEmail()).isEqualTo("updated@example.com");
+        assertThat(retrievedUser.getLogin()).isEqualTo("updatedUser");
     }
 }

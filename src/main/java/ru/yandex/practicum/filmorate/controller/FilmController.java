@@ -3,15 +3,21 @@ package ru.yandex.practicum.filmorate.controller;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exceptions.NotFoundException;
 import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.FilmGenre;
+import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.film.dal.FilmGenresDbStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/films")
@@ -19,11 +25,13 @@ import java.util.Collection;
 public class FilmController {
     private final FilmStorage filmStorage;
     private final FilmService filmService;
+    private final FilmGenresDbStorage filmGenresDbStorage;
 
     @Autowired
-    public FilmController(FilmStorage filmStorage, FilmService filmService) {
+    public FilmController(@Qualifier("filmDbStorage") FilmStorage filmStorage, FilmService filmService, FilmGenresDbStorage filmGenresDbStorage) {
         this.filmStorage = filmStorage;
         this.filmService = filmService;
+        this.filmGenresDbStorage = filmGenresDbStorage;
     }
 
 
@@ -56,6 +64,18 @@ public class FilmController {
 
         filmStorage.createFilm(film);
 
+        Set<Long> existingGenreIds = filmGenresDbStorage.findAllGenresByFilmId(film.getId()).stream()
+                .map(FilmGenre::getGenreId)
+                .collect(Collectors.toSet());
+
+        if (film.getGenres() != null) {
+            Set<Long> uniqueGenreIds = film.getGenres().stream()
+                    .map(Genre::getId)
+                    .collect(Collectors.toSet());
+
+            filmGenresDbStorage.addGenreToFilm(film.getId(), uniqueGenreIds);
+        }
+
         log.info("Фильм успешно создан с id: " + film.getId());
         return film;
     }
@@ -79,7 +99,7 @@ public class FilmController {
             Film oldFilm = filmStorage.getFilmById(newFilm.getId());
             if (filmStorage.isFilmNameAlreadyExist(newFilm.getName())) {
                 log.error("Ошибка обновления фильма: фильм с таким название уже существует");
-                throw new ValidationException("Это название фильма уже используется");
+                throw new NotFoundException("Это название фильма уже используется");
             }
 
             oldFilm.setName(newFilm.getName());

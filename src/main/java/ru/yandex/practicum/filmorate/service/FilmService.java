@@ -2,16 +2,16 @@ package ru.yandex.practicum.filmorate.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exceptions.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.film.dal.FilmLikesDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,11 +19,13 @@ import java.util.stream.Collectors;
 public class FilmService {
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
+    private final FilmLikesDbStorage filmLikesDbStorage;
 
     @Autowired
-    public FilmService(FilmStorage filmStorage, UserStorage userStorage) {
+    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage, @Qualifier("userDbStorage") UserStorage userStorage, FilmLikesDbStorage filmLikesDbStorage) {
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
+        this.filmLikesDbStorage = filmLikesDbStorage;
     }
 
     public void addLike(Long filmId, Long userId) {
@@ -33,13 +35,9 @@ public class FilmService {
         } else if (userStorage.getUserById(userId) == null) {
             log.error("Не существует пользователя с id - " + userId);
             throw new NotFoundException("Не существует пользователя с id - " + userId);
-        } else if (filmStorage.getFilmById(filmId).getLikedUsersIds() == null) {
-            Set<Long> filmLikes = new HashSet<>();
-            filmLikes.add(userId);
-            filmStorage.getFilmById(filmId).setLikedUsersIds(filmLikes);
         } else {
             log.info("Пользователь {} лайкнул фильм {}", userId, filmId);
-            filmStorage.getFilmById(filmId).getLikedUsersIds().add(userId);
+            filmLikesDbStorage.addLike(filmId, userId);
         }
     }
 
@@ -51,7 +49,7 @@ public class FilmService {
             log.error("Не существует пользователя с id - " + userId);
             throw new NotFoundException("Не существует пользователя с id - " + userId);
         }
-        filmStorage.getFilmById(filmId).getLikedUsersIds().remove(userId);
+        filmLikesDbStorage.deleteLike(filmId, userId);
     }
 
     public Collection<Film> getMostLikedFilms(Long count) {
